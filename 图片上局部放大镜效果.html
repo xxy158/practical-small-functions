@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片上局部放大镜效果</title>
+    <style>
+        .boxs{
+            width: 500px;
+            position: relative;
+        }
+        .slide_box {
+            position: absolute;
+            width: 170px;
+            height: 90px;
+            background: #fff;
+            z-index: 100;
+            display: none;
+            pointer-events: none;   /*设置该元素没有事件，即可以穿透放大镜元素 操作图片盒子上的事件*/
+        }
+    </style>
+</head>
+<body>
+    <div class="boxs">
+      <div class="imgBox" onmouseover="mouseOver()" onmousemove="mouseMove()" onmouseout="mouseOut()">
+        <img width="100%" class="eachImg" src="./4.png" draggable="false" />
+        <!-- 放大镜元素 -->
+        <div class="slide_box"></div>
+      </div>
+    </div>
+
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="./lib/html2canvas.js"></script>
+    <script>
+      var loading=false
+      var biggerSrc
+      // dom转换为图片（放大镜使用）
+      function domToImage() {
+        if(loading){
+          return
+        }
+        loading=true
+        setTimeout(() => {
+            $(".slide_box").hide()
+            var dom =document.querySelector('.imgBox')
+            var width = dom.offsetWidth; //dom宽
+            var height = dom.offsetHeight; //dom高
+            if (!dom) {
+                console.log('节点不存在');
+                return
+            }
+            var canvasBox = document.createElement("canvas");
+            var scale = 2.2;
+            var rect = dom.getBoundingClientRect();
+            canvasBox.width = width * scale;
+            canvasBox.height = height * scale;
+            canvasBox.style.width = width + "px";
+            canvasBox.style.height = height + "px";
+            canvasBox.getContext("2d").scale(scale, scale);
+            canvasBox.getContext("2d").translate(-rect.left, -rect.top);
+            const option = {
+                scale: scale,
+                canvas: canvasBox,
+                // 以下字段可选
+                width: width, // canvas宽度
+                height: height, // canvas高度
+                x: 0, // x坐标
+                y: 0, // y坐标
+                scrollY: 0, 
+                scrollX: 0,
+                // foreignObjectRendering: true, // 是否在浏览器支持的情况下使用ForeignObject渲染
+                useCORS: true, // 是否尝试使用CORS从服务器加载图像
+                allowTaint: true, // Whether to allow cross-origin images to taint the canvas
+                async: false, // 是否异步解析和呈现元素
+                // 以下字段必填
+                background: "#ffffff", // 一定要添加背景颜色，否则出来的图片，背景全部都是透明的
+                // dpi: 300, // 处理模糊问题
+                // onrendered: function (canvas) {
+                //     // https://developer.mozilla.org/zh-CN/docs/Web/API/HTMLCanvasElement/toDataURL
+                //     // let url = canvas.toDataURL('image/png', 1.0)
+                //     let url = canvas.toDataURL();
+                //     console.log(url);
+                // },
+            };
+            html2canvas(dom, option).then(canvas => {
+                // 兼容
+                if (window.navigator.msSaveOrOpenBlob) {
+                    var imgData = canvas.msToBlob(); 
+                    var blobObj = new Blob([imgData],{ type: 'image/png' });
+                    let a = new FileReader();
+                    a.readAsDataURL(blobObj);
+                    a.onload = (e)=> { 
+                        var url = e.target.result 
+                        biggerSrc={
+                            docImgUrl: url,
+                            change:false
+                        }
+                        getPosition(movePostionE);
+                    }
+                    return
+                } else {
+                    var url = canvas.toDataURL(); 
+                    biggerSrc={
+                        docImgUrl: url,
+                        change:false
+                    }
+                    getPosition(movePostionE);
+                }
+                loading=false
+            }).catch(error => {
+                loading=false
+                console.error('html2canvas', error);
+            });
+        }, 500)
+      }
+      // 鼠标是否在图片上
+      var overImg
+      // 鼠标在图片上等待500毫秒后，才触发放大镜效果；在此期间鼠标移动了，则清除上次定时器，重新计时
+      var overTimer 
+      // 是否是初次进入图片，触发放大镜效果，，触发并生成放大图片后，以后就走鼠标移动切换对应放大区域的效果
+      var beginOver=true
+      var movePostionE
+      // （放大镜使用）
+      function mouseOver(e){
+        overImg=true
+        var e = e || window.event; //实现兼容
+        if(overTimer){
+          clearTimeout(overTimer)
+          overTimer=null
+        }
+        overTimer=setTimeout(() => {
+          beginOver=false
+          movePostionE=e
+          var target=e.target||e.srcElement
+          var $dom = $(target)
+          while (!$dom.hasClass("imgBox")) {
+            $dom=$dom.parent()
+          }
+          // 是否已经转换为图片
+          if(biggerSrc){
+              // dom已经转换为图片，且dom元素宽高有改变时，需要重新转换图片
+            if(biggerSrc.change){
+              domToImage()
+            }
+          }else{
+            domToImage()
+          }
+        }, 500);
+      }
+      //（放大镜使用）
+      function mouseMove(e){
+        overImg=true
+        var e = e || window.event; // 判断事件源
+        var $dom= $(e.currentTarget)
+        // 还未转换图片，且没有转换图片后的对应数据；这时鼠标移动了，则鼠标在图片上等待500毫秒后转换图片的定时器 重新计时
+        if(beginOver&&!biggerSrc){
+          mouseOver(e)
+        }else{
+          // 转换后，鼠标移动则改变放大镜中显示图片的位置
+          movePostionE=e
+          getPosition(e);
+        }
+      }
+      // （放大镜使用）
+      function mouseOut(e){
+        overImg=false
+        $(".slide_box").hide()
+        beginOver=true
+        if(overTimer){
+          clearTimeout(overTimer)
+          overTimer=null
+        }
+      }
+      // 移动坐标（放大镜使用）
+      function getPosition(e) {
+        var e = e || window.event; //实现兼容
+        var imgbox=document.querySelector('.imgBox')
+        // 取遮罩块
+        var glassBlock = document.querySelector('.slide_box')
+
+        // 鼠标在图片区域内移动事件
+        if(e.stopPropagation){
+          e.stopPropagation();
+        }else{
+          e.cancelBubble=true;
+        }	
+
+        // 取图片容器的大小及其相对于视口的位置，需要实时取，所以放在move事件里
+        var target=e.target||e.srcElement
+        if(!target){
+          return
+        }
+        var clientRect = target.getBoundingClientRect();
+        if(!$(target).hasClass("eachImg")){
+          var dom=target
+          while (!$(dom).hasClass("imgBox")) {
+            dom=dom.parentNode
+          }
+          clientRect = dom.getBoundingClientRect();
+        }
+        // 获取距鼠标距的上和左的坐标
+        var leftX = e.clientX - clientRect.left;
+        var leftY = e.clientY - clientRect.top;
+
+        // 动态设置遮罩块的left和top位置 这里需要减去遮罩层的一半，因为鼠标位于遮罩块中心点
+        var pointerLeft = leftX - $(glassBlock).width()/2;
+        var pointerTop = leftY - $(glassBlock).height()/2;
+        var domWidth=parseInt(imgbox.clientWidth)
+        var domHeight=parseInt(imgbox.clientHeight)
+        var backgroundImgWidth=domWidth*2
+        var backgroundImgHeight=domHeight*2
+        var backgroundleft=-leftX*2+$(glassBlock).width()/2
+        var backgroundtop=-leftY*2+$(glassBlock).height()/2
+
+        // 如果鼠标坐标移动超出原始图片区域边缘 则取消放大镜效果 因为这里存在快速移动鼠标到大图区域时，鼠标仍处在外层的图片区域内，并不会触发mouseout事件(虽然中间隔了小小的间距，但是快速移动仍能产生这个bug,如代码下面的图所示)
+        if((pointerLeft+$(glassBlock).width()/2) > clientRect.width || pointerLeft < 0 - $(glassBlock).width()/2 || (pointerTop+$(glassBlock).height()/2) > clientRect.height || pointerTop < 0 - $(glassBlock).height()/2){
+          $(".slide_box").hide()
+          return;
+        };
+
+        // 遮罩块在最左边的时候，鼠标仍在图片区域内，可在遮罩块左边缘至中心线区域内移动，且这时遮罩块为距左0像素
+        if(pointerLeft < 0){
+          pointerLeft = 0;
+          backgroundleft=-leftX   // -leftX*2+leftX
+        };
+        // 右边限制
+        if(pointerLeft > clientRect.width - $(glassBlock).width()){
+          pointerLeft = clientRect.width - $(glassBlock).width();
+          backgroundleft=$(glassBlock).width()-$(imgbox).width()-leftX //-leftX*2 + ($(glassBlock).width()-($(imgbox).width()-leftX))
+        };
+        // 顶部限制
+        if(pointerTop < 0){
+          pointerTop = 0;
+          backgroundtop=-leftY  // -leftY*2+leftY
+        };
+        // 底部限制
+        if(pointerTop > clientRect.height - $(glassBlock).height()){
+          pointerTop = clientRect.height - $(glassBlock).height();
+          backgroundtop=$(glassBlock).height()-$(imgbox).height()-leftY //-leftY*2+($(glassBlock).height()-($(imgbox).height()-leftY))
+        };
+        // 设置遮罩块的位置
+        // console.log(e,pointerLeft,pointerTop)
+        glassBlock.style.left = pointerLeft+"px";
+        glassBlock.style.top = pointerTop+"px";
+        $(glassBlock).css({
+          'background-image': `url(${biggerSrc.docImgUrl})`,
+          'background-position': `${backgroundleft}px ${backgroundtop}px`,
+          'background-size': `${backgroundImgWidth}px ${backgroundImgHeight}px`
+        })
+        if(overImg){
+          $(glassBlock).show()
+        }
+    }
+    </script>
+</body>
+</html>

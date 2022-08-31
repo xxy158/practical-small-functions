@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>复制指定元素内的文本信息</title>
+  <link href="https://cdn.bootcdn.net/ajax/libs/layer/3.5.1/mobile/need/layer.css" rel="stylesheet">
+</head>
+<style>
+  html, body {
+    margin: 0;
+    font-size: 14px;
+  }
+  button{
+    margin-top: 20px;
+  }
+  p{
+    font-size: 14px;
+    color: #666;
+    line-height: 20px;
+    text-indent: 2em;
+  }
+</style>
+<body>
+  <button onclick="copyText()">复制文本</button>
+  <div class="copyText">
+    <h1>Canvas和SVG的区别是什么？</h1>
+    <p>1. Canvas主要是用笔刷来绘制2D图形的。</p>
+    <p>2. SVG主要是用标签来绘制不规则矢量图的。</p>
+    <p>3. 相同点：都是主要用来画2D图形的。</p>
+    <p>4. 不同点：Canvas画的是位图，SVG画的是失量图。</p>
+    <p>5. 不同点：SVG节点过多时渲染慢，Canvas性能更好一点，但写起来更复杂。</p>
+    <p>6. 不同点：SVG支持分层和事件，Canvas不支持，但是可以用库实现</p>
+  </div>
+</body>
+<script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdn.bootcdn.net/ajax/libs/layer/3.5.1/layer.min.js"></script>
+<script>
+  // 复制文本
+  function copyText(){
+    var div = document.querySelector(".copyText")
+    // 安全域下使用 navigator.clipboard 提升效率
+    if (navigator.clipboard && window.isSecureContext) {
+      var texts=div.innerText
+      // navigator clipboard 向剪贴板写文本
+      navigator.clipboard.writeText(texts).then(function() {
+        layer.msg("复制成功")
+      }, function() {
+        layer.msg("复制失败")
+      });
+    }else{
+      // document.execCommand 已被弃用，所以首选 navigator.clipboard
+      var range
+      if (document.body.createTextRange) {
+          range = document.body.createTextRange();
+          range.moveToElementText(div);
+          range.select();
+      } else if (window.getSelection) {
+          var selection = window.getSelection();
+          range = document.createRange();
+          range.selectNodeContents(div); // 创建选取内容范围
+          selection.removeAllRanges();  // 清除已选择的内容
+          selection.addRange(range);   // 添加选取内容，模拟用户选取
+          /*if(selection.setBaseAndExtent){
+              selection.setBaseAndExtent(text, 0, text, 1);
+          }*/
+      } else {
+          console.warn("none");
+      }
+      document.execCommand('copy');   // 触发复制事件
+      layer.msg("复制成功")
+      document.execCommand("unselect", "false", null) // 取消选取区域
+    }
+  }
+</script>
+
+</html>

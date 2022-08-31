@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>获取图片上指定位置的截图</title>
+    <style>
+        .box{
+            width: 50%;
+            position: relative;
+            float: left;
+        }
+        .divss{
+            position: absolute;
+            top: 0;
+        }
+        .cdd{
+            position: absolute;
+            border: 5px solid rgb(179, 2, 2);
+            border-radius: 50%;
+        }
+        canvas{
+            border: 1px solid #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <img src="./6.png" alt="">
+        <!-- 截取坐标在图上的位置 -->
+        <div class="divss">
+            <div class="cdd" style="left: 50px;top:150px;"></div>
+            <div class="cdd" style="left: 150px;top:200px;"></div>
+            <div class="cdd" style="left: 100px;top:250px;"></div>
+            <div class="cdd" style="left: 20px;top:210px;"></div>
+        </div>
+    </div>
+    <div style="float: right;">
+        <p>画布首次裁剪</p>
+        <canvas id="imgDom">画布首次裁剪</canvas>
+        <p>画布最终规则裁剪</p>
+        <canvas id="imgClipDom">画布最终规则裁剪</canvas>
+    </div>
+    <script>
+    // 截取指定坐标的图片信息
+    var canvas=document.getElementById('imgDom');
+    var ctx=canvas.getContext('2d');
+    var img=new Image();
+    img.src='./6.png';
+    // img.crossOrigin = ''
+    var clipPos=[[50,150],[150,200],[100,250],[20,210]]
+    img.onload=function(){
+        console.log(this)
+        canvas.width=img.width;
+        canvas.height=img.height;
+        ctx.beginPath();
+        ctx.moveTo(clipPos[0][0],clipPos[0][1]);
+        ctx.lineTo(clipPos[1][0],clipPos[1][1]);
+        ctx.lineTo(clipPos[2][0],clipPos[2][1]);
+        ctx.lineTo(clipPos[3][0],clipPos[3][1]);
+        // 裁剪后其他区域不可见，然后再绘制图片，就会只剩下指定的区域；
+        // 实际上画布还是原本图片的宽高大小，只是指定的区域里面才有图片内容，其他区域是空白的；
+        // 画布裁剪只能裁剪出规则的矩形，这时候需要算出指定有效坐标区域的最小外接矩形，使不规则转变为规则
+        ctx.clip();
+        ctx.drawImage(img,0,0,img.width,img.height);
+        // 当绘制图形不规则时，根据左右上下的坐标得到不规则图形外的最小外接矩形，进行规则裁剪
+        // 首先循环获取最小的x，y 和 最大的x，y
+        var minLeft=clipPos[0][0],maxLeft=clipPos[0][0],minTop=clipPos[0][1],maxTop=clipPos[0][1]
+        for (let index = 1; index < clipPos.length; index++) {
+            const item = clipPos[index];
+            if(item[0]<minLeft){
+                minLeft=item[0]
+            }
+            if(item[0]>maxLeft){
+                maxLeft=item[0]
+            }
+            if(item[1]<minTop){
+                minTop=item[1]
+            }
+            if(item[1]>maxTop){
+                maxTop=item[1]
+            }
+        }
+        // 得到规则矩形对应区域的图片数据
+        console.log(minLeft,minTop,maxLeft-minLeft,maxTop-minTop)
+        var imgClipData=ctx.getImageData(minLeft,minTop,maxLeft-minLeft,maxTop-minTop);
+        var canvas2 = document.getElementById("imgClipDom")
+        var cxt2=canvas2.getContext("2d")
+        canvas2.width=imgClipData.width
+        canvas2.height=imgClipData.height
+        cxt2.putImageData(imgClipData,0,0,0,0,imgClipData.width,imgClipData.height)
+        // 可以转换为base64进行查看
+        // var img2 = canvas2.toDataURL("image/png");
+    }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        // 异步加载css文件
+        function loadStyles(url) {
+            var link = document.createElement("link");
+            link.type = "text/css";
+            link.rel = "stylesheet";
+            link.href = url;
+            document.getElementsByTagName("head")[0].appendChild(link);
+        }
+
+        // 异步加载js文件
+        function loadScript(url) {
+            var script = document.createElement("script");
+            script.type = "text/javascript";
+            script.src = url;
+            document.body.appendChild(script);
+        }
+
+        //ajax动态加载js脚本
+        function ajaxPage(sId, url){
+            let oXmlHttp
+            if ( window.XMLHttpRequest ) // Gecko
+                oXmlHttp = new XMLHttpRequest() ;
+            else if ( window.ActiveXObject ) // IE
+                oXmlHttp = new ActiveXObject("MsXml2.XmlHttp") ;
+
+            oXmlHttp.onreadystatechange = function(){
+                if (oXmlHttp.readyState == 4){
+                    var source = oXmlHttp.responseText
+                    if ( ( source != null ) && ( !document.getElementById( sId ) ) ){
+                        var oHead = document.getElementsByTagName('HEAD').item(0);
+                        var oScript = document.createElement( "script" );
+                        oScript.type = "text/javascript";
+                        oScript.id = sId;
+                        oScript.text = source;
+                        oHead.appendChild( oScript );
+                    }
+                }
+            }
+            oXmlHttp.open('GET', url, false);//同步操作
+            oXmlHttp.send(null);
+        }
+        
+        loadStyles("/OcrWeb/lib/swiper/swiper-bundle.min.css")
+
+        ajaxPage( "scrA", "/OcrWeb/js/px2rem.js" );
+    </script>
+</body>
+</html>
